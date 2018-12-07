@@ -1,0 +1,154 @@
+#!/bin/bash
+
+#***********************************
+#CHECKING ARGUMENTS
+if [[ $# -ne 0 ]]; then
+  echo "Usage: $0 <no arg>"
+  exit 1
+fi
+#-----------------------------------
+
+#***********************************
+#VARIABLES
+SOURCE=${BASH_SOURCE[0]}
+while [ -h $SOURCE ]; do
+	DIR=$( cd -P $( dirname $SOURCE ) && pwd )
+	SOURCE=$(readlink $SOURCE)
+	[[ $SOURCE != /* ]] && SOURCE=$DIR/$SOURCE
+done
+export DIR=$( cd -P $( dirname $SOURCE ) && pwd )
+transfertumDirectory=".transfertum"
+dataFile="transfertum.data"
+touch $DIR/$dataFile
+user=""
+check=false
+machine=""
+line=0
+REPLY=""
+#----------------------------------
+
+#***********************************
+#FUNCTIONS
+display_home () {
+    echo "--- Home ---"
+	echo ""
+    echo "Connect to which machine?"
+    echo ""
+	display_machine 0
+    echo ""
+	echo "+ | New machine."
+    echo "- | Delete machine."
+	echo "q | Quit"
+    echo ""
+}
+display_machine () {
+	line=0
+	read one<$DIR/$dataFile
+	while [[ $? -eq 0 ]]; do
+        	if [[ -n "$machine" ]]; then
+        			if [ $1 -eq 1 ]; then #
+        				line=$((line+1))
+                		echo "$line) $user | $machine"
+                	fi
+                	if [[ $1 -eq 0 ]]; then
+                		echo "$user | $machine"
+                	fi
+                fi
+        	read machine user one
+	done<$DIR/$dataFile
+	return
+}
+display_delete_machine () {
+	echo "--- Delete machine ---"
+    echo ""
+    echo "Delete which machine?"
+    echo ""
+    display_machine 1
+    echo ""
+    echo "q | Back"
+    echo ""
+    return
+}
+display_connexion () {
+	echo "--- Protocol ---"
+	echo ""
+	echo "What do you want to do ?"
+	echo ""
+	echo "1 | ssh"
+    echo "2 | scp  ->"
+    echo "3 | <-  scp"
+    echo "q | Back"
+	echo ""
+	return
+}
+if_exist () {
+	machine=""
+	user=""
+	check=false
+	read one<$DIR/$dataFile
+	while [[ $? -eq 0 ]]; do
+        #check=true if machine exist
+        if [[ "$REPLY" == "$user" ]]; then
+    		check=true
+    		break;
+        fi
+	read machine user one
+	done<$DIR/$dataFile
+}
+#----------------------------------
+
+#************************************
+#MAIN
+while [[ 1 ]]; do
+	machine=""
+	echo -en "\ec"
+	$DIR/displayName.sh
+	display_home
+
+	#************************************
+	#PROGRAM
+	read REPLY
+	case "$REPLY" in
+		#**********************************
+		#REGISTRY MACHINE
+		+)
+			echo -en "\ec"
+			$DIR/displayName.sh
+			$DIR/addMachine.sh $DIR/$dataFile
+			;;
+		#----------------------------------
+	 	#**********************************
+		#DELETE MACHINE
+	 	-)
+			echo -en "\ec"
+			$DIR/displayName.sh
+			display_delete_machine
+			$DIR/deleteMachine.sh $DIR/$dataFile
+		;;
+		#----------------------------------
+		#**********************************
+		#LEAVE PROGRAM
+		q)
+			echo -en "\ec"
+			break
+		;;
+		#----------------------------------
+		#**********************************
+		#CHECK IF MACHINE EXIST
+		*)
+			if_exist
+			if [[ check || "$REPLY" == "" ]]; then
+				echo -en "\ec"
+				$DIR/displayName.sh
+				display_connexion
+				$DIR/connexion.sh $machine
+			else 
+				echo "The machine does not exist !"
+				echo -en "\ec"
+			fi
+		;;
+		#----------------------------------
+	esac
+	#----------------------------------
+done
+#----------------------------------
